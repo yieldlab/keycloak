@@ -51,6 +51,7 @@ import org.keycloak.testsuite.util.URLUtils;
 import org.keycloak.testsuite.util.WaitUtils;
 import org.keycloak.util.BasicAuthHelper;
 import org.openqa.selenium.By;
+import org.openqa.selenium.WebElement;
 
 import javax.ws.rs.client.Client;
 import javax.ws.rs.client.ClientBuilder;
@@ -73,6 +74,8 @@ import static org.keycloak.testsuite.broker.SocialLoginTest.Provider.GITHUB;
 import static org.keycloak.testsuite.broker.SocialLoginTest.Provider.GITHUB_PRIVATE_EMAIL;
 import static org.keycloak.testsuite.broker.SocialLoginTest.Provider.GITLAB;
 import static org.keycloak.testsuite.broker.SocialLoginTest.Provider.GOOGLE;
+import static org.keycloak.testsuite.broker.SocialLoginTest.Provider.GOOGLE_HOSTED_DOMAIN;
+import static org.keycloak.testsuite.broker.SocialLoginTest.Provider.GOOGLE_NON_MATCHING_HOSTED_DOMAIN;
 import static org.keycloak.testsuite.broker.SocialLoginTest.Provider.LINKEDIN;
 import static org.keycloak.testsuite.broker.SocialLoginTest.Provider.MICROSOFT;
 import static org.keycloak.testsuite.broker.SocialLoginTest.Provider.OPENSHIFT;
@@ -100,6 +103,8 @@ public class SocialLoginTest extends AbstractKeycloakTest {
 
     public enum Provider {
         GOOGLE("google", GoogleLoginPage.class),
+        GOOGLE_HOSTED_DOMAIN("google", "google-hosted-domain", GoogleLoginPage.class),
+        GOOGLE_NON_MATCHING_HOSTED_DOMAIN("google", "google-hosted-domain", GoogleLoginPage.class),
         FACEBOOK("facebook", FacebookLoginPage.class),
         GITHUB("github", GitHubLoginPage.class),
         GITHUB_PRIVATE_EMAIL("github", "github-private-email", GitHubLoginPage.class),
@@ -238,6 +243,29 @@ public class SocialLoginTest extends AbstractKeycloakTest {
     }
 
     @Test
+    public void googleHostedDomainLogin() throws InterruptedException {
+        setTestProvider(GOOGLE_HOSTED_DOMAIN);
+        performLogin();
+        assertAccount();
+        testTokenExchange();
+    }
+
+    @Test
+    public void googleNonMatchingHostedDomainLogin() throws InterruptedException {
+        setTestProvider(GOOGLE_NON_MATCHING_HOSTED_DOMAIN);
+        performLogin();
+
+        // Just to be sure there's no redirect in progress
+        WaitUtils.pause(3000);
+        WaitUtils.waitForPageToLoad();
+
+        WebElement errorMessage = driver.findElement(By.xpath(".//p[@class='instruction']"));
+
+        assertTrue(errorMessage.isDisplayed());
+        assertEquals("Unexpected error when authenticating with identity provider", errorMessage.getText());
+    }
+
+    @Test
     public void bitbucketLogin() throws InterruptedException {
         setTestProvider(BITBUCKET);
         performLogin();
@@ -328,6 +356,12 @@ public class SocialLoginTest extends AbstractKeycloakTest {
         idp.setStoreToken(true);
         idp.getConfig().put("clientId", getConfig(provider, "clientId"));
         idp.getConfig().put("clientSecret", getConfig(provider, "clientSecret"));
+        if (provider == GOOGLE_HOSTED_DOMAIN) {
+            idp.getConfig().put("hostedDomain", getConfig(provider, "hostedDomain"));
+        }
+        if (provider == GOOGLE_NON_MATCHING_HOSTED_DOMAIN) {
+            idp.getConfig().put("hostedDomain", "non-matching-" + getConfig(provider, "hostedDomain"));
+        }
         if (provider == STACKOVERFLOW) {
             idp.getConfig().put("key", getConfig(provider, "clientKey"));
         }

@@ -256,7 +256,6 @@ public class SocialLoginTest extends AbstractKeycloakTest {
         performLogin();
 
         // Just to be sure there's no redirect in progress
-        WaitUtils.pause(3000);
         WaitUtils.waitForPageToLoad();
 
         WebElement errorMessage = driver.findElement(By.xpath(".//p[@class='instruction']"));
@@ -356,12 +355,19 @@ public class SocialLoginTest extends AbstractKeycloakTest {
         idp.setStoreToken(true);
         idp.getConfig().put("clientId", getConfig(provider, "clientId"));
         idp.getConfig().put("clientSecret", getConfig(provider, "clientSecret"));
+
         if (provider == GOOGLE_HOSTED_DOMAIN) {
-            idp.getConfig().put("hostedDomain", getConfig(provider, "hostedDomain"));
+            final String hostedDomain = getConfig(provider, "hostedDomain");
+            if (hostedDomain == null) {
+                throw new IllegalArgumentException("'hostedDomain' for Google IdP must be specified");
+            }
+            idp.getConfig().put("hostedDomain", hostedDomain);
         }
         if (provider == GOOGLE_NON_MATCHING_HOSTED_DOMAIN) {
-            idp.getConfig().put("hostedDomain", "non-matching-" + getConfig(provider, "hostedDomain"));
+            idp.getConfig().put("hostedDomain", "non-matching-hosted-domain");
         }
+
+
         if (provider == STACKOVERFLOW) {
             idp.getConfig().put("key", getConfig(provider, "clientKey"));
         }
